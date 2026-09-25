@@ -47,7 +47,8 @@ export default function Home(){
  const words=useMemo(()=>project.scenes.reduce((n,s)=>n+(s.blocks||migrateScene(s).blocks||[]).reduce((m,b)=>m+b.text.trim().split(/\s+/).filter(Boolean).length,0),0),[project]);
  const pages=Math.max(1,Math.ceil(words/250));
  function updateBlocks(blocks:Block[]){setSaved(false);const heading=blocks.find(b=>b.type==="scene")?.text||scene.heading;setProject(p=>({...p,scenes:p.scenes.map(s=>s.id===active?{...s,heading,blocks,body:undefined}:s)}))}
- function formatBlockText(type:ElementType,text:string){if(type==="parenthetical"){const inner=text.trim().replace(/^\(|\)$/g,"");return inner?`(${inner})`:""}return ["scene","character","transition","shot"].includes(type)?text.toUpperCase():text}\n function updateBlock(id:number,text:string){updateBlocks(scene.blocks!.map(b=>b.id===id?{...b,text:formatBlockText(b.type,text)}:b))}
+ function formatBlockText(type:ElementType,text:string){if(type==="parenthetical"){const inner=text.trim().replace(/^\(|\)$/g,"");return inner?`(${inner})`:""}return ["scene","character","transition","shot"].includes(type)?text.toUpperCase():text}
+ function updateBlock(id:number,text:string){updateBlocks(scene.blocks!.map(b=>b.id===id?{...b,text:formatBlockText(b.type,text)}:b))}
  function focusBlock(id:number){requestAnimationFrame(()=>{const el=document.getElementById("block-"+id) as HTMLTextAreaElement|null;el?.focus();if(el){el.selectionStart=el.value.length;el.selectionEnd=el.value.length}})}
  function insertBlock(afterId:number,type:ElementType){const id=Math.max(...scene.blocks!.map(b=>b.id),0)+1,index=scene.blocks!.findIndex(b=>b.id===afterId),blocks=[...scene.blocks!];blocks.splice(index+1,0,{id,type,text:""});updateBlocks(blocks);focusBlock(id)}
  function key(e:React.KeyboardEvent<HTMLTextAreaElement>,b:Block){
