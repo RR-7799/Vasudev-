@@ -6,7 +6,8 @@ type ElementType = "scene" | "action" | "character" | "dialogue" | "parenthetica
 type Block = { id:number; type:ElementType; text:string };
 type Scene = { id:number; heading:string; body?:string; blocks?:Block[] };
 type Language={code:string;name:string;native:string;font:string};
-type Character={id:number;name:string;description:string;notes:string};\ntype Location={id:number;name:string;description:string;notes:string};
+type Character={id:number;name:string;description:string;notes:string};
+type Location={id:number;name:string;description:string;notes:string};
 type Breakdown={characters:string[];extras:string;props:string;vehicles:string;costumes:string;makeup:string;sfx:string;vfx:string;music:string;sound:string;setDressing:string;notes:string};
 type Shot={id:number;number:number;type:string;description:string;camera:string;lens:string;movement:string;frameRate:string;aspectRatio:string;lighting:string;audio:string;vfx:string;notes:string;storyboardPrompt?:string;storyboardImage?:string};
 type ScheduleDay={id:number;date:string;label:string;location:string;notes:string;sceneIds:number[]};
@@ -39,7 +40,8 @@ function detect(text:string,current:ElementType):ElementType{
 function migrateScene(s:Scene):Scene{
  if(s.blocks?.length)return s;
  const blocks:Block[]=[];let id=1;let afterCharacter=false;
- for(const raw of(s.body||"").split(/\n/)){const text=raw.trim();if(!text){afterCharacter=false;continue}
+ for(const raw of(s.body||"").split(/
+/)){const text=raw.trim();if(!text){afterCharacter=false;continue}
   let type:ElementType="action";
   if(/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)\s/i.test(text))type="scene";
   else if(/^\(.*\)$/.test(text))type="parenthetical";
@@ -54,18 +56,21 @@ function migrateScene(s:Scene):Scene{
 export default function Home(){
  const[project,setProject]=useState<Project>(starter),[view,setView]=useState<"screenplay"|"characters"|"locations"|"breakdown"|"shotlist"|"storyboard"|"schedule"|"budget"|"callsheet"|"crew"|"check"|"notes"|"continuity"|"dashboard">("screenplay"),[active,setActive]=useState(1),[saved,setSaved]=useState(true),[focused,setFocused]=useState<number|null>(1),[recent,setRecent]=useState<string[]>([]),[history,setHistory]=useState<Project[]>([]),[future,setFuture]=useState<Project[]>([]);
  const projectRef=useRef<Project>(starter);
- const historyLock=useRef(false);\n const fileInput=useRef<HTMLInputElement|null>(null);
+ const historyLock=useRef(false);
+ const fileInput=useRef<HTMLInputElement|null>(null);
  const activeRef=useRef<number|null>(null);
  useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)})}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
  useEffect(()=>{projectRef.current=project;localStorage.setItem("vasudev-project",JSON.stringify(project));setSaved(true)},[project]);
  function commitProject(next:Project){if(JSON.stringify(next)===JSON.stringify(projectRef.current))return;setHistory(h=>[...h.slice(-49),projectRef.current]);setFuture([]);projectRef.current=next;setProject(next);setSaved(false)}
  function undo(){if(!history.length)return;const previous=history[history.length-1];setHistory(h=>h.slice(0,-1));setFuture(f=>[projectRef.current,...f.slice(0,49)]);projectRef.current=previous;setProject(previous);setSaved(false)}
  function redo(){if(!future.length)return;const next=future[0];setFuture(f=>f.slice(1));setHistory(h=>[...h.slice(-49),projectRef.current]);projectRef.current=next;setProject(next);setSaved(false)}
- const sceneIndex=Math.max(0,project.scenes.findIndex(s=>s.id===active));\n const scene=migrateScene(project.scenes[sceneIndex]??project.scenes[0]);
+ const sceneIndex=Math.max(0,project.scenes.findIndex(s=>s.id===active));
+ const scene=migrateScene(project.scenes[sceneIndex]??project.scenes[0]);
  const locations=useMemo(()=>{const map=new Map<string,Location>();(project.locations||[]).forEach(l=>map.set(l.name.toUpperCase(),l));project.scenes.forEach(s=>{const heading=migrateScene(s).heading||"";const m=heading.match(/^(?:INT\\.|EXT\\.|INT\\/EXT\\.|I\\/E\\.)\\s+(.+?)(?:\\s+(?:—|-)\\s+.+)?$/i);if(m){const name=m[1].trim().toUpperCase();if(name&&!map.has(name))map.set(name,{id:Math.max(0,...Array.from(map.values()).map(l=>l.id))+map.size+1,name,description:"",notes:""})}});return Array.from(map.values()).sort((a,b)=>a.name.localeCompare(b.name))},[project]);
  const characters=useMemo(()=>{const map=new Map<string,Character>();(project.characters||[]).forEach(c=>map.set(c.name.toUpperCase(),c));project.scenes.forEach(s=>{(s.blocks||migrateScene(s).blocks||[]).filter(b=>b.type==="character"&&b.text.trim()).forEach(b=>{const name=b.text.trim().replace(/^@/,"").toUpperCase();if(!map.has(name))map.set(name,{id:Math.max(0,...Array.from(map.values()).map(c=>c.id))+map.size+1,name,description:"",notes:""})})});return Array.from(map.values()).sort((a,b)=>a.name.localeCompare(b.name))},[project]);
  const words=useMemo(()=>project.scenes.reduce((n,s)=>n+(s.blocks||migrateScene(s).blocks||[]).reduce((m,b)=>m+b.text.trim().split(/\s+/).filter(Boolean).length,0),0),[project]);
- const paginated=useMemo(()=>paginateBlocks(scene.blocks||[]),[scene.blocks]);\n const pages=paginated.length;
+ const paginated=useMemo(()=>paginateBlocks(scene.blocks||[]),[scene.blocks]);
+ const pages=paginated.length;
  function getBreakdown(sceneId:number):Breakdown{return projectRef.current.breakdowns?.[sceneId]||{characters:[],extras:"",props:"",vehicles:"",costumes:"",makeup:"",sfx:"",vfx:"",music:"",sound:"",setDressing:"",notes:""}}
  function updateBreakdown(field:keyof Breakdown,value:string|string[]){const current=getBreakdown(active);commitProject({...projectRef.current,breakdowns:{...(projectRef.current.breakdowns||{}),[active]:{...current,[field]:value}}})}
  function autoBreakdown(){const chars=Array.from(new Set((scene.blocks||[]).filter(b=>b.type==="character").map(b=>b.text.trim().toUpperCase()).filter(Boolean)));const current=getBreakdown(active);commitProject({...projectRef.current,breakdowns:{...(projectRef.current.breakdowns||{}),[active]:{...current,characters:chars.length?chars:current.characters}}})}
@@ -105,7 +110,8 @@ export default function Home(){
  function updateNote(id:number,field:keyof Note,value:string){updateNotes(getNotes().map(n=>n.id===id?{...n,[field]:field==="title"?value:value,sceneId:field==="sceneId"?Number(value):n.sceneId}:n))}
  function deleteNote(id:number){updateNotes(getNotes().filter(n=>n.id!==id))}
  function continuityRows(){const rows:{name:string;type:string;scenes:number[];details:string}[]=[];characters.forEach(ch=>{const scenes=projectRef.current.scenes.filter(s=>(migrateScene(s).blocks||[]).some(b=>b.type==="character"&&b.text.trim().toUpperCase()===ch.name)).map(s=>s.id);rows.push({name:ch.name,type:"CHARACTER",scenes,details:`Appears in ${scenes.length} scene${scenes.length===1?"":"s"}`})});locations.forEach(loc=>{const scenes=projectRef.current.scenes.filter(s=>{const h=migrateScene(s).heading;return h.toUpperCase().includes(loc.name)}).map(s=>s.id);rows.push({name:loc.name,type:"LOCATION",scenes,details:`Used in ${scenes.length} scene${scenes.length===1?"":"s"}`})});return rows.sort((a,b)=>a.name.localeCompare(b.name))}
- function dashboardStats(){const totalScenes=project.scenes.length,totalShots=Object.values(project.shotLists||{}).reduce((n,s)=>n+s.length,0),scheduled=new Set((project.schedule||[]).flatMap(d=>d.sceneIds)).size,budgetTotal=(project.budget||[]).reduce((n,x)=>n+x.quantity*x.rate,0);return{totalScenes,totalShots,scheduled,budgetTotal}}\n function updateBlocks(blocks:Block[]){const heading=blocks.find(b=>b.type==="scene")?.text||scene.heading;commitProject({...projectRef.current,scenes:projectRef.current.scenes.map(s=>s.id===active?{...s,heading,blocks,body:undefined}:s)})}
+ function dashboardStats(){const totalScenes=project.scenes.length,totalShots=Object.values(project.shotLists||{}).reduce((n,s)=>n+s.length,0),scheduled=new Set((project.schedule||[]).flatMap(d=>d.sceneIds)).size,budgetTotal=(project.budget||[]).reduce((n,x)=>n+x.quantity*x.rate,0);return{totalScenes,totalShots,scheduled,budgetTotal}}
+ function updateBlocks(blocks:Block[]){const heading=blocks.find(b=>b.type==="scene")?.text||scene.heading;commitProject({...projectRef.current,scenes:projectRef.current.scenes.map(s=>s.id===active?{...s,heading,blocks,body:undefined}:s)})}
  function formatBlockText(type:ElementType,text:string){if(type==="parenthetical"){const inner=text.trim().replace(/^\(|\)$/g,"");return inner?`(${inner})`:""}return ["scene","character","transition","shot"].includes(type)?text.toUpperCase():text}
  function updateBlock(id:number,text:string){updateBlocks(scene.blocks!.map(b=>b.id===id?{...b,text:formatBlockText(b.type,text)}:b))}
  function focusBlock(id:number){requestAnimationFrame(()=>{const el=document.getElementById("block-"+id) as HTMLTextAreaElement|null;el?.focus();if(el){el.selectionStart=el.value.length;el.selectionEnd=el.value.length}})}
