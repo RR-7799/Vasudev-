@@ -56,7 +56,7 @@ function migrateScene(s:Scene):Scene{
 export default function Home(){
  const[project,setProject]=useState<Project>(starter),[view,setView]=useState<"screenplay"|"characters"|"locations"|"breakdown"|"shotlist"|"storyboard"|"schedule"|"budget"|"callsheet"|"crew"|"check"|"notes"|"continuity"|"dashboard">("screenplay"),[active,setActive]=useState(1),[saved,setSaved]=useState(true),[focused,setFocused]=useState<number|null>(1),[recent,setRecent]=useState<string[]>([]),[history,setHistory]=useState<Project[]>([]),[future,setFuture]=useState<Project[]>([]);
  const projectRef=useRef<Project>(starter);
- const historyLock=useRef(false);
+ 
  const fileInput=useRef<HTMLInputElement|null>(null);
  const activeRef=useRef<number|null>(null);
  useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)})}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
