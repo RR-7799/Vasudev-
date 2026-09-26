@@ -11,10 +11,10 @@ type Breakdown={characters:string[];extras:string;props:string;vehicles:string;c
 type Shot={id:number;number:number;type:string;description:string;camera:string;lens:string;movement:string;frameRate:string;aspectRatio:string;lighting:string;audio:string;vfx:string;notes:string;storyboardPrompt?:string;storyboardImage?:string};
 type ScheduleDay={id:number;date:string;label:string;location:string;notes:string;sceneIds:number[]};
 type BudgetItem={id:number;category:string;description:string;quantity:number;rate:number;sceneId:number;notes:string};
-type Project = { title:string; genre:string; logline:string; language:string; scenes:Scene[]; characters?:Character[]; locations?:Location[]; breakdowns?:Record<number,Breakdown>; shotLists?:Record<number,Shot[]>; schedule?:ScheduleDay[]; budget?:BudgetItem[] };
+type Project = { title:string; genre:string; logline:string; language:string; currency?:string; scenes:Scene[]; characters?:Character[]; locations?:Location[]; breakdowns?:Record<number,Breakdown>; shotLists?:Record<number,Shot[]>; schedule?:ScheduleDay[]; budget?:BudgetItem[] };
 
 const languages:Language[]=[{code:"en",name:"English",native:"English",font:"Courier New"},{code:"hi",name:"Hindi",native:"हिन्दी",font:"Noto Sans Devanagari"},{code:"kn",name:"Kannada",native:"ಕನ್ನಡ",font:"Noto Sans Kannada"},{code:"ta",name:"Tamil",native:"தமிழ்",font:"Noto Sans Tamil"},{code:"te",name:"Telugu",native:"తెలుగు",font:"Noto Sans Telugu"},{code:"ml",name:"Malayalam",native:"മലയാളം",font:"Noto Sans Malayalam"},{code:"bn",name:"Bengali",native:"বাংলা",font:"Noto Sans Bengali"},{code:"mr",name:"Marathi",native:"मराठी",font:"Noto Sans Devanagari"},{code:"gu",name:"Gujarati",native:"ગુજરાતી",font:"Noto Sans Gujarati"},{code:"pa",name:"Punjabi",native:"ਪੰਜਾਬੀ",font:"Noto Sans Gurmukhi"},{code:"or",name:"Odia",native:"ଓଡ଼ିଆ",font:"Noto Sans Oriya"},{code:"as",name:"Assamese",native:"অসমীয়া",font:"Noto Sans Bengali"},{code:"ur",name:"Urdu",native:"اردو",font:"Noto Nastaliq Urdu"}];
-const starter:Project={title:"Untitled Film",genre:"Feature",logline:"",language:"en",characters:[{id:1,name:"ARJUN",description:"",notes:""}],scenes:[{id:1,heading:"INT. APARTMENT — NIGHT",blocks:[
+const starter:Project={title:"Untitled Film",genre:"Feature",logline:"",language:"en",currency:"INR",characters:[{id:1,name:"ARJUN",description:"",notes:""}],scenes:[{id:1,heading:"INT. APARTMENT — NIGHT",blocks:[
 {id:1,type:"scene",text:"INT. APARTMENT — NIGHT"},{id:2,type:"action",text:"A quiet room. The city hums beyond the window."},
 {id:3,type:"action",text:"ARJUN, 28, sits alone at the table. He looks at his phone."},{id:4,type:"character",text:"ARJUN"},{id:5,type:"dialogue",text:"We have to talk."}]}]};
 
@@ -52,7 +52,7 @@ export default function Home(){
  const projectRef=useRef<Project>(starter);
  const historyLock=useRef(false);\n const fileInput=useRef<HTMLInputElement|null>(null);
  const activeRef=useRef<number|null>(null);
- useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",scenes:p.scenes.map(migrateScene)})}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
+ useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)})}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
  useEffect(()=>{projectRef.current=project;localStorage.setItem("vasudev-project",JSON.stringify(project));setSaved(true)},[project]);
  function commitProject(next:Project){if(JSON.stringify(next)===JSON.stringify(projectRef.current))return;setHistory(h=>[...h.slice(-49),projectRef.current]);setFuture([]);projectRef.current=next;setProject(next);setSaved(false)}
  function undo(){if(!history.length)return;const previous=history[history.length-1];setHistory(h=>h.slice(0,-1));setFuture(f=>[projectRef.current,...f.slice(0,49)]);projectRef.current=previous;setProject(previous);setSaved(false)}
@@ -79,6 +79,9 @@ export default function Home(){
  function updateScheduleDay(id:number,field:keyof ScheduleDay,value:string){updateSchedule(getSchedule().map(d=>d.id===id?{...d,[field]:value}:d))}
  function toggleSceneDay(dayId:number,sceneId:number){updateSchedule(getSchedule().map(d=>d.id===dayId?{...d,sceneIds:d.sceneIds.includes(sceneId)?d.sceneIds.filter(x=>x!==sceneId):[...d.sceneIds,sceneId]}:d))}
  function getBudget():BudgetItem[]{return projectRef.current.budget||[]}
+ function setCurrency(value:string){commitProject({...projectRef.current,currency:value})}
+ function currencySymbol(){return projectRef.current.currency==="USD"?"$":projectRef.current.currency==="EUR"?"€":projectRef.current.currency==="GBP"?"£":"₹"}
+ function money(value:number){return `${currencySymbol()}${value.toLocaleString("en-IN")}` }
  function updateBudget(items:BudgetItem[]){commitProject({...projectRef.current,budget:items})}
  function addBudgetItem(){const items=getBudget();const id=Math.max(0,...items.map(x=>x.id))+1;updateBudget([...items,{id,category:"GENERAL",description:"",quantity:1,rate:0,sceneId:0,notes:""}])}
  function updateBudgetItem(id:number,field:keyof BudgetItem,value:string){updateBudget(getBudget().map(x=>x.id===id?{...x,[field]:field==="quantity"||field==="rate"||field==="sceneId"?Number(value):value}:x))}
@@ -105,7 +108,7 @@ export default function Home(){
  function newProject(){const title="Untitled Film";commitProject({...starter,title,scenes:starter.scenes.map(s=>({...s,blocks:s.blocks?.map(b=>({...b}))}))});setActive(1);remember(title)}
  function saveProject(){localStorage.setItem("vasudev-project",JSON.stringify(project));remember(project.title||"Untitled Film");const blob=new Blob([JSON.stringify(project,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(project.title||"Untitled Film").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+".vasudev.json";a.click();URL.revokeObjectURL(a.href);setSaved(true)}
  function openProject(){fileInput.current?.click()}
- function importProject(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const p=JSON.parse(String(reader.result)) as Project;if(!p.scenes?.length)throw new Error("Invalid project");setProject({...p,language:p.language||"en",scenes:p.scenes.map(migrateScene)});setActive(p.scenes[0].id);remember(p.title||"Untitled Film");setSaved(true)}catch{alert("That file is not a valid Vasudev project.")}e.target.value=""};reader.readAsText(file)}
+ function importProject(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const p=JSON.parse(String(reader.result)) as Project;if(!p.scenes?.length)throw new Error("Invalid project");setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)});setActive(p.scenes[0].id);remember(p.title||"Untitled Film");setSaved(true)}catch{alert("That file is not a valid Vasudev project.")}e.target.value=""};reader.readAsText(file)}
  function updateLocation(id:number,field:"name"|"description"|"notes",value:string){const next=locations.map(l=>l.id===id?{...l,[field]:field==="name"?value.toUpperCase():value}:l);commitProject({...projectRef.current,locations:next})}
  function addLocation(){const id=Math.max(0,...locations.map(l=>l.id))+1;commitProject({...projectRef.current,locations:[...locations,{id,name:"NEW LOCATION",description:"",notes:""}]});setView("locations")}
  function updateCharacter(id:number,field:"name"|"description"|"notes",value:string){const next=characters.map(c=>c.id===id?{...c,[field]:field==="name"?value.toUpperCase():value}:c);commitProject({...projectRef.current,characters:next})}
