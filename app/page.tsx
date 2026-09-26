@@ -58,7 +58,7 @@ export default function Home(){
  const projectRef=useRef<Project>(starter);
  
  const fileInput=useRef<HTMLInputElement|null>(null);
- const activeRef=useRef<number|null>(null);
+ 
  useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)})}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
  useEffect(()=>{projectRef.current=project;localStorage.setItem("vasudev-project",JSON.stringify(project));setSaved(true)},[project]);
  function commitProject(next:Project){if(JSON.stringify(next)===JSON.stringify(projectRef.current))return;setHistory(h=>[...h.slice(-49),projectRef.current]);setFuture([]);projectRef.current=next;setProject(next);setSaved(false)}
