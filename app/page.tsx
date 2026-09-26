@@ -91,7 +91,7 @@ export default function Home(){
  function updateBudgetItem(id:number,field:keyof BudgetItem,value:string){updateBudget(getBudget().map(x=>x.id===id?{...x,[field]:field==="quantity"||field==="rate"||field==="sceneId"?Number(value):value}:x))}
  function deleteBudgetItem(id:number){updateBudget(getBudget().filter(x=>x.id!==id))}
  function getCallSheet(dayId:number):CallSheet{return projectRef.current.callSheets?.[dayId]||{dayId,callTime:"07:00",crewCall:"07:30",wrapTime:"19:00",weather:"",parking:"",hospital:"",emergency:"",notes:""}}
- function updateCallSheet(field:keyof CallSheet,value:string){const id=activeScheduleDay;if(id===undefined)return;const current=getCallSheet(id);commitProject({...projectRef.current,callSheets:{...(projectRef.current.callSheets||{}),[id]:{...current,[field]:value}}})}
+ function updateCallSheet(field:keyof CallSheet,value:string){const current=getCallSheet(active);commitProject({...projectRef.current,callSheets:{...(projectRef.current.callSheets||{}),[active]:{...current,[field]:value}}})}
  function getCrew():CrewMember[]{return projectRef.current.crew||[]}
  function updateCrew(members:CrewMember[]){commitProject({...projectRef.current,crew:members})}
  function addCrew(){const members=getCrew();const id=Math.max(0,...members.map(x=>x.id))+1;updateCrew([...members,{id,name:"NEW CREW MEMBER",role:"",department:"",phone:"",notes:""}]);setView("crew")}
