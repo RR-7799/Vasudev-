@@ -59,7 +59,7 @@ export default function Home(){
  
  const fileInput=useRef<HTMLInputElement|null>(null);
  
- useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)})}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
+ useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)});projectRef.current={...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)}}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
  useEffect(()=>{projectRef.current=project;localStorage.setItem("vasudev-project",JSON.stringify(project));setSaved(true)},[project]);
  function commitProject(next:Project){if(JSON.stringify(next)===JSON.stringify(projectRef.current))return;setHistory(h=>[...h.slice(-49),projectRef.current]);setFuture([]);projectRef.current=next;setProject(next);setSaved(false)}
  function undo(){if(!history.length)return;const previous=history[history.length-1];setHistory(h=>h.slice(0,-1));setFuture(f=>[projectRef.current,...f.slice(0,49)]);projectRef.current=previous;setProject(previous);setSaved(false)}
