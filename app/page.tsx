@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { App } from "@capacitor/app";
 
 type ElementType = "scene" | "action" | "character" | "dialogue" | "parenthetical" | "transition" | "shot";
 type Block = { id:number; type:ElementType; text:string };
@@ -117,6 +118,7 @@ export default function Home(){
  function focusBlock(id:number){requestAnimationFrame(()=>{const el=document.getElementById("block-"+id) as HTMLTextAreaElement|null;el?.focus();if(el){el.selectionStart=el.value.length;el.selectionEnd=el.value.length}})}
  function insertBlock(afterId:number,type:ElementType){const id=Math.max(...scene.blocks!.map(b=>b.id),0)+1,index=scene.blocks!.findIndex(b=>b.id===afterId),blocks=[...scene.blocks!];blocks.splice(index+1,0,{id,type,text:""});updateBlocks(blocks);focusBlock(id)}
  useEffect(()=>{const handler=(e:KeyboardEvent)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="z"){e.preventDefault();if(e.shiftKey)redo();else undo()}else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo()}};window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler)},[history,future]);
+ useEffect(()=>{let remove:(()=>void)|undefined,cancelled=false;App.addListener("backButton",({canGoBack})=>{if(view!=="screenplay"){setView("screenplay")}else if(canGoBack){window.history.back()}else{void App.exitApp()}}).then(handle=>{if(cancelled)void handle.remove();else remove=()=>{void handle.remove()}}).catch(()=>{});return()=>{cancelled=true;remove?.()}},[view]);
  function key(e:React.KeyboardEvent<HTMLTextAreaElement>,b:Block){
   if((e.metaKey||e.ctrlKey)&&shortcutTypes[e.key]){e.preventDefault();setType(b.id,shortcutTypes[e.key]);return}
   if(e.key==="Tab"){e.preventDefault();setType(b.id,nextType(b.type));return}
