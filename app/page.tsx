@@ -38,6 +38,8 @@ function detect(text:string,current:ElementType):ElementType{
  if(current==="action"&&/^[A-Z][A-Z0-9 .,'’'&-]{1,32}$/.test(s)&&s.length<=32)return"character";
  return current;
 }
+function readStorage(key:string,fallback:string){try{return localStorage.getItem(key)??fallback}catch{return fallback}}
+function writeStorage(key:string,value:string){try{localStorage.setItem(key,value);return true}catch{return false}}
 function migrateScene(s:Scene):Scene{
  if(s.blocks?.length)return s;
  const blocks:Block[]=[];let id=1;let afterCharacter=false;
@@ -60,8 +62,8 @@ export default function Home(){
  
  const fileInput=useRef<HTMLInputElement|null>(null);
  
- useEffect(()=>{const raw=localStorage.getItem("vasudev-project");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)});projectRef.current={...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)}}catch{}try{setRecent(JSON.parse(localStorage.getItem("vasudev-recent")||"[]"))}catch{}},[]);
- useEffect(()=>{projectRef.current=project;localStorage.setItem("vasudev-project",JSON.stringify(project));setSaved(true)},[project]);
+ useEffect(()=>{const raw=readStorage("vasudev-project","");if(raw)try{const p=JSON.parse(raw)as Project;setProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)});projectRef.current={...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)}}catch{}try{setRecent(JSON.parse(readStorage("vasudev-recent","[]")||"[]"))}catch{}},[]);
+ useEffect(()=>{projectRef.current=project;writeStorage("vasudev-project",JSON.stringify(project));setSaved(true)},[project]);
  function commitProject(next:Project){if(JSON.stringify(next)===JSON.stringify(projectRef.current))return;setHistory(h=>[...h.slice(-49),projectRef.current]);setFuture([]);projectRef.current=next;setProject(next);setSaved(false)}
  function undo(){if(!history.length)return;const previous=history[history.length-1];setHistory(h=>h.slice(0,-1));setFuture(f=>[projectRef.current,...f.slice(0,49)]);projectRef.current=previous;setProject(previous);setSaved(false)}
  function redo(){if(!future.length)return;const next=future[0];setFuture(f=>f.slice(1));setHistory(h=>[...h.slice(-49),projectRef.current]);projectRef.current=next;setProject(next);setSaved(false)}
@@ -132,11 +134,11 @@ export default function Home(){
   if(e.key==="Backspace"&&!b.text&&scene.blocks!.length>1){e.preventDefault();const i=scene.blocks!.findIndex(x=>x.id===b.id),prev=scene.blocks![Math.max(0,i-1)];updateBlocks(scene.blocks!.filter(x=>x.id!==b.id));focusBlock(prev.id)}
  }
  function setType(id:number,type:ElementType){updateBlocks(scene.blocks!.map(b=>b.id===id?{...b,type,text:formatBlockText(type,b.text)}:b));focusBlock(id)}
- function remember(title:string,snapshot?:Project){const next=[title,...recent.filter(x=>x!==title)].slice(0,8);setRecent(next);localStorage.setItem("vasudev-recent",JSON.stringify(next));if(snapshot){const saved=JSON.parse(localStorage.getItem("vasudev-projects")||"{}");saved[title]=snapshot;localStorage.setItem("vasudev-projects",JSON.stringify(saved))}}
+ function remember(title:string,snapshot?:Project){const next=[title,...recent.filter(x=>x!==title)].slice(0,8);setRecent(next);writeStorage("vasudev-recent",JSON.stringify(next));if(snapshot){const saved=JSON.parse(readStorage("vasudev-projects","{}")||"{}");saved[title]=snapshot;writeStorage("vasudev-projects",JSON.stringify(saved))}}
  function newProject(){const title="Untitled Film";commitProject({...starter,title,scenes:starter.scenes.map(s=>({...s,blocks:s.blocks?.map(b=>({...b}))}))});setActive(1);remember(title,{...starter,title,scenes:starter.scenes.map(s=>({...s,blocks:s.blocks?.map(b=>({...b}))}))})}
  function saveProject(){localStorage.setItem("vasudev-project",JSON.stringify(project));remember(project.title||"Untitled Film",project);const blob=new Blob([JSON.stringify(project,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(project.title||"Untitled Film").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+".vasudev.json";a.click();URL.revokeObjectURL(a.href);setSaved(true)}
  function openProject(){fileInput.current?.click()}
- function importProject(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const p=JSON.parse(String(reader.result)) as Project;if(!p.scenes?.length)throw new Error("Invalid project");commitProject({...p,language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)});setActive(p.scenes[0].id);remember(p.title||"Untitled Film",p);setSaved(true)}catch{alert("That file is not a valid Vasudev project.")}e.target.value=""};reader.readAsText(file)}
+ function importProject(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!parsed||typeof parsed!=="object"||!Array.isArray(parsed.scenes)||!parsed.scenes.length||parsed.scenes.some((s:unknown)=>!s||typeof s!=="object"||!Number.isFinite(Number((s as Scene).id))))throw new Error("Invalid project");const p=parsed as Project;const next:Project={...p,title:typeof p.title==="string"&&p.title.trim()?p.title:"Untitled Film",language:p.language||"en",currency:p.currency||"INR",scenes:p.scenes.map(migrateScene)};commitProject(next);setActive(next.scenes[0].id);remember(next.title,next)}catch{alert("That file is not a valid Vasudev project.")}e.target.value=""};reader.onerror=()=>{alert("The project file could not be read.");e.target.value=""};reader.readAsText(file)}
  function updateLocation(id:number,field:"name"|"description"|"notes",value:string){const next=locations.map(l=>l.id===id?{...l,[field]:field==="name"?value.toUpperCase():value}:l);commitProject({...projectRef.current,locations:next})}
  function addLocation(){const id=Math.max(0,...locations.map(l=>l.id))+1;commitProject({...projectRef.current,locations:[...locations,{id,name:"NEW LOCATION",description:"",notes:""}]});setView("locations")}
  function updateCharacter(id:number,field:"name"|"description"|"notes",value:string){const next=characters.map(c=>c.id===id?{...c,[field]:field==="name"?value.toUpperCase():value}:c);commitProject({...projectRef.current,characters:next})}
