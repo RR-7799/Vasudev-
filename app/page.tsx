@@ -41,10 +41,10 @@ function detect(text:string,current:ElementType):ElementType{
 function readStorage(key:string,fallback:string){try{return localStorage.getItem(key)??fallback}catch{return fallback}}
 function writeStorage(key:string,value:string){try{localStorage.setItem(key,value);return true}catch{return false}}
 function migrateScene(s:Scene):Scene{
- if(s.blocks?.length)return s;
- const blocks:Block[]=[];let id=1;let afterCharacter=false;
- for(const raw of(s.body||"").split(/
-/)){const text=raw.trim();if(!text){afterCharacter=false;continue}
+ const validTypes:ElementType[]=["scene","action","character","dialogue","parenthetical","transition","shot"];
+ if(Array.isArray(s.blocks)&&s.blocks.length){const blocks=s.blocks.filter((b):b is Block=>!!b&&typeof b==="object").map((b,i)=>({id:Number.isFinite(Number(b.id))?Number(b.id):i+1,type:validTypes.includes(b.type)?b.type:"action",text:typeof b.text==="string"?b.text:""}));if(blocks.length)return{...s,heading:typeof s.heading==="string"?s.heading:blocks.find(b=>b.type==="scene")?.text||"",blocks}}
+ const blocks:Block[]=[];let id=1;let afterCharacter=false;const body=typeof s.body==="string"?s.body:"";
+ for(const raw of body.split(/\n/)){const text=raw.trim();if(!text){afterCharacter=false;continue}
   let type:ElementType="action";
   if(/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)\s/i.test(text))type="scene";
   else if(/^\(.*\)$/.test(text))type="parenthetical";
@@ -53,7 +53,7 @@ function migrateScene(s:Scene):Scene{
   blocks.push({id:id++,type,text:["scene","character","transition","shot"].includes(type)?text.toUpperCase():text});afterCharacter=type==="character";
  }
  if(!blocks.length)blocks.push({id:1,type:"action",text:""});
- return{...s,heading:blocks.find(b=>b.type==="scene")?.text||s.heading,blocks};
+ return{...s,heading:blocks.find(b=>b.type==="scene")?.text||(typeof s.heading==="string"?s.heading:""),blocks};
 }
 
 export default function Home(){
