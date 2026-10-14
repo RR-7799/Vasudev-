@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: "com.vasudev.filmmaking",
   appName: "Vasudev",
   webDir: "out",
-  bundledWebRuntime: false,
   server: {
     androidScheme: "https",
   },
